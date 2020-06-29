@@ -3,7 +3,7 @@ import sys
 import threading
 import time
 from datetime import datetime
-from typing import Callable
+from typing import Callable, List
 
 log: logging.Logger
 
@@ -43,7 +43,7 @@ class Emulator:
 
     def __init__(self, task_handler: Callable[[str], None]):
         self.__queue_threads: dict[str, threading.Thread] = {}
-        self.__queues: dict[str, list[Task]] = {}
+        self.__queues: dict[str, List[Task]] = {}
         self.__task_handler = task_handler
         self.__lock = threading.Lock()
 

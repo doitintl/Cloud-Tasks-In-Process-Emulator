@@ -5,6 +5,7 @@ from collections import defaultdict
 from datetime import datetime
 from threading import current_thread
 from time import sleep
+from typing import List
 
 from cloud_tasks_emulator.emulator import Emulator, format_timestamp
 
@@ -16,7 +17,7 @@ class TestEmulator(unittest.TestCase):
         self.DELAY_EVEN_NUMBERED_TASKS = 3
         self.NUM_QUEUES = 4
 
-        self.received: dict[str, list[str]] = defaultdict(list)
+        self.received: dict[str, List[str]] = defaultdict(list)
 
     def handle_tasks(self, payload: str):
         now = time.time()
