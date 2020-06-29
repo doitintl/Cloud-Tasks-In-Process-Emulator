@@ -62,28 +62,38 @@ class Emulator:
                             f"scheduled for  {format_timestamp(peek.scheduled_for)}")
                 time.sleep(0.01)
 
-    def create_task(self, tasks_on_queue, payload, scheduled_for: datetime, project, location):
+    def create_task(self, queue_name, payload, scheduled_for: datetime, project, location):
+        """
+        :param queue_name:  The name of the queue. If the queue does not yet exist
+        in this emulator, it will be created.
+        :param payload: A string that will be passed to the handler.
+        :param scheduled_for: When this should be delivered
+        :param project: If this is None or empty, "dummy-project" will be used.
+        :param location: If this is None or empty, "dummy-location" will be used.
+        :return: None
+        """
         project=project or "dummy-project"
-        queue_path = f"projects/{project}/locations/{location}/queues/{tasks_on_queue}"
+        location=location or "dummy-location"
+        queue_path = f"projects/{project}/locations/{location}/queues/{queue_name}"
         with self.__lock:
             if queue_path not in self.__queues:
                 self.__queues[queue_path] = []
                 new_thread = threading.Thread(
                     target=self.__process_queue,
-                    name=f"Thread-{tasks_on_queue}",
+                    name=f"Thread-{queue_name}",
                     args=[queue_path],
                     daemon=True
                 )
                 self.__queue_threads[queue_path] = new_thread
                 new_thread.start()
                 log.info("Created queue " + queue_path)
-            tasks_on_queue = self.__queues[queue_path]
+            queue_name = self.__queues[queue_path]
             task = Task(payload, scheduled_for.timestamp())
-            tasks_on_queue.append(task)
+            queue_name.append(task)
 
             log.info(f"Enqueued in queue {queue_path}; Task {task}")
 
-            tasks_on_queue.sort(key=lambda t: t.scheduled_for)
+            queue_name.sort(key=lambda t: t.scheduled_for)
 
     def total_enqueued_tasks(self):
         return sum(len(q) for q in self.__queues.values())

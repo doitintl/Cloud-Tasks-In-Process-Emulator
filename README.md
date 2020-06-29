@@ -5,19 +5,24 @@ an emulator for the Cloud Tasks API,  as it does for Datastore or PubSub. This p
 
 # Usage
 
-To use this emulator, copy `emulator.py` into your codebase. Create an `Emulator` with a callback function, which will receive
-the payloads of the tasks that you send. To send tasks, call the method `Emulator.create_task`.
+To use this emulator
+- Copy `emulator.py` into your codebase. 
+- Create an `Emulator` object, passing a callback function, which will receive
+the payloads of the tasks that you create. 
+- To send tasks, call the method `Emulator.create_task`. You can choose the queue and the scheduled delivery time.
 
 # Usage Example
 
-As a usage example, run `local_server.py`. This is a trivial webapp: Browse to http://127.0.0.1:8080 (just click the link 
-in the console) and a task will be created (see `main.py`). It will be handled, on schedule, three seconds later: 
-The example handler "processes" the task simply by converting it to upper case and printing it. 
-
-This example shows how to keep the Emulator codebase separate from the production codebase. In `local_server.py`, we inject 
-an `Emulator`; in deployment, where no such `Emulator` is created, a new `CloudTasksAccessor` is created that invokes
-the Cloud Tasks API, keeping the server code (`main.py`) clear of any emulator code: 
-You could even omit  `emulator.py` in deployment. (Though there is no harm if you leave it in.)
+- As a usage example, run `local_server.py`. 
+- This is a trivial webapp: Browse to http://127.0.0.1:8080 (just click the link 
+in the console) and a task will be created (see `main.py`). 
+- It will be handled, on schedule, three seconds later.
+- The example handler "processes" the task simply by converting it to upper case and printing it.
+- This example shows how to keep the Emulator codebase separate from the production codebase. 
+  - In `local_server.py` used in development, we inject an `Emulator`.
+  - In contrast , in a deployed server, where no such `Emulator` is injected, a new `CloudTasksAccessor` is created that invokes
+  the real Cloud Tasks API, keeping the server code (`main.py`) clear of any emulator code.
+  - You could even omit  `emulator.py` in deployment. (Though there is no harm if you leave it in.)
 
 # Four ways to develop for Cloud Tasks
 When developing code for Cloud Tasks (let's say in an HTTP server application that you are coding and debugging), 
@@ -56,7 +61,8 @@ you have four choices.
     - TODO
   - Disadvantages
     - TODO
-     
+# Scope of functionality
+  - TODO      
 # More reading
 - For details on using Cloud Tasks, refer to the
  [Python sample README](https://github.com/GoogleCloudPlatform/python-docs-samples/blob/master/tasks/README.md) for 
