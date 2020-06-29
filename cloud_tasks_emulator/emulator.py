@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-import json
 import logging
 import sys
 import threading
@@ -49,48 +47,49 @@ class Emulator:
         self.__task_handler = task_handler
         self.__lock = threading.Lock()
 
-    def __process_queue(self, queue_name):
+    def __process_queue(self, queue_path):
         while True:
             with self.__lock:
-                queue = self.__queues[queue_name]
+                queue = self.__queues[queue_path]
                 if queue:
                     peek = queue[0]
                     now: float = time.time()
                     if peek.scheduled_for <= now:
                         task: Task = queue.pop(0)  # Pop the beginning; push to the end
                         self.__task_handler(task.payload)
-                        log.info(f"Processed task from queue {queue_name}: Task {task}")
+                        log.info(f"Processed task from queue {queue_path}: Task {task}")
                     else:
                         log.info(
                             f"Task was not ready at time {format_timestamp(now)}; "
                             f"scheduld for  {format_timestamp(peek.scheduled_for)}")
                 time.sleep(0.01)
 
-    def enqueue_task(self, payload: str, queue_name: str, scheduled_for: float):
+    def create_task(self, tasks_on_queue, payload, scheduled_for: datetime, project, location):
+        queue_path = f"projects/{project}/locations/{location}/queues/{tasks_on_queue}"
         with self.__lock:
-            if queue_name not in self.__queues:
-                self.__queues[queue_name] = []
+            if queue_path not in self.__queues:
+                self.__queues[queue_path] = []
                 new_thread = threading.Thread(
                     target=self.__process_queue,
-                    name=f"Thread-{queue_name}",
-                    args=[queue_name],
+                    name=f"Thread-{tasks_on_queue}",
+                    args=[queue_path],
                     daemon=True
                 )
-                self.__queue_threads[queue_name] = new_thread
+                self.__queue_threads[queue_path] = new_thread
                 new_thread.start()
-                log.info("Created queue " + queue_name)
-            queue = self.__queues[queue_name]
+                log.info("Created queue " + queue_path)
+            tasks_on_queue = self.__queues[queue_path]
+            task = Task(payload, scheduled_for.timestamp())
+            tasks_on_queue.append(task)
 
-            task = Task(payload, scheduled_for)
-            queue.append(task)
+            log.info(f"Enqueued in queue {queue_path}; Task {task}")
 
-            log.info(f"Enqueued in queue {queue_name}; Task {task}")
-
-            queue.sort(key=lambda t: t.scheduled_for)
+            tasks_on_queue.sort(key=lambda t: t.scheduled_for)
 
     def total_enqueued_tasks(self):
         return sum(len(q) for q in self.__queues.values())
 
 
 def format_timestamp(timestamp: float) -> str:
-    return datetime.fromtimestamp(timestamp).strftime("%H:%M:%S.%f")[:-3]
+    dt = datetime.fromtimestamp(timestamp)
+    return dt.strftime("%H:%M:%S.%f")[:-3]

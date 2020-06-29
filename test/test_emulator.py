@@ -1,7 +1,8 @@
 import json
 import time
 import unittest
-from collections import Counter, defaultdict
+from collections import defaultdict
+from datetime import datetime
 from threading import current_thread
 from time import sleep
 
@@ -15,7 +16,7 @@ class TestEmulator(unittest.TestCase):
         self.DELAY_EVEN_NUMBERED_TASKS = 3
         self.NUM_QUEUES = 4
 
-        self.received:dict[str, list[str]] = defaultdict(list)
+        self.received: dict[str, list[str]] = defaultdict(list)
 
     def handle_tasks(self, payload: str):
         now = time.time()
@@ -35,10 +36,9 @@ class TestEmulator(unittest.TestCase):
 
         print(f"""Handling task with insertion #{insertion_index} from \
 {task_queue_name} scheduled for {format_timestamp(scheduled_for)} at \
-{format_timestamp(now)} ({round(-1000*diff_in_seconds)} ms late); using {thread_name}""")
+{format_timestamp(now)} ({round(-1000 * diff_in_seconds)} ms late); using {thread_name}""")
 
         self.assertEqual(task_queue_name, queue_name_from_thread)
-
 
     def test_enqueue_dequeue(self):
         emulator = Emulator(self.handle_tasks)
@@ -51,7 +51,7 @@ class TestEmulator(unittest.TestCase):
         for queue_name, tasks_received in self.received.items():
             self.assertEqual(len(tasks_received), self.TASKS_PER_QUEUE,
                              f"Received {len(tasks_received)} in queue {queue_name}")
-            sorted_tasks=sorted(tasks_received, key=lambda jsonTask: jsonTask['scheduled_for'])
+            sorted_tasks = sorted(tasks_received, key=lambda json_task: json_task['scheduled_for'])
             self.assertEqual(sorted_tasks, tasks_received)
 
     def __enqueue_test_tasks(self, emulator):
@@ -66,8 +66,10 @@ class TestEmulator(unittest.TestCase):
                 payload = {"insertion_index": insertionIndex,
                            "queue_name": queue_name,
                            "scheduled_for": scheduled_for}
-
-                emulator.enqueue_task(json.dumps(payload), queue_name, scheduled_for)
+                project = "sample_project"
+                location = "mars-west2"
+                emulator.create_task(queue_name, json.dumps(payload), datetime.fromtimestamp(scheduled_for), project,
+                                     location)
                 sleep(0.2)
         return max_scheduled_for
 
