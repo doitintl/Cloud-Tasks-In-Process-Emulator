@@ -21,15 +21,15 @@ def task_handler():
 
 @app.route("/")
 def send_task():
-    app_id = os.getenv('GAE_APPLICATION')
-    if not app_id: raise Exception("GAE_APPLICATION env variable must be specified")
+    project_id = os.getenv('GAE_APPLICATION')
     in_seconds = 3
     scheduled_for = datetime.datetime.now() + datetime.timedelta(seconds=in_seconds)
     payload = f"This task was sent at {format_datetime(datetime.datetime.now())}, scheduled for {format_datetime(scheduled_for)}"
     global cloud_tasks_client
-    if cloud_tasks_client is None:
-        cloud_tasks_client = CloudTasksAccessor()
-    cloud_tasks_client.create_task(queue_name, payload, scheduled_for, app_id, "us-central1")
+    # In deployment, where the cloud_tasks_client is not injected for development, we will use
+    # the CloudTasksAccess to get the real Cloud Tasks API.
+    cloud_tasks_client =cloud_tasks_client or CloudTasksAccessor()
+    cloud_tasks_client.create_task(queue_name, payload, scheduled_for, project_id, "us-central1")
     return f'Sent "{payload}"'
 
 

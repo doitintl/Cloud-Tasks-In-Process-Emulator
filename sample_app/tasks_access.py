@@ -6,8 +6,10 @@ from google.protobuf import timestamp_pb2
 
 class CloudTasksAccessor:
     def create_task(self, queue_name, payload, scheduled_for: datetime, project, location):
-        if not scheduled_for: scheduled_for = datetime.now()
-        if not payload: payload = ""
+        assert project, "Must provide project ID"
+        assert location, "Must provide location"
+        scheduled_for= scheduled_for or  datetime.now()
+        payload =payload or ""
 
         client = tasks_v2.CloudTasksClient()
         queue_path = client.queue_path(project, location, queue_name)
@@ -24,5 +26,5 @@ class CloudTasksAccessor:
         }
 
         response = client.create_task(queue_path, task)
-        print(f'Created "task {response.name}"')
+        print(f'Created "task {response.name}" at {queue_path}')
         return response

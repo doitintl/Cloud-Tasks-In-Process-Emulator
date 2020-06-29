@@ -11,9 +11,10 @@ log: logging.Logger
 def init_logger():
     global log
     log = logging.getLogger(__name__)
+
     log.setLevel(logging.DEBUG)
     handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.ERROR)
+    handler.setLevel(logging.ERROR)# Set to logging.INFO for logging to stdout
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
     log.addHandler(handler)
@@ -25,10 +26,7 @@ init_logger()
 class Task:
     def __init__(self, payload, scheduled_for: float = None):
         self.payload = payload
-        if scheduled_for is None:
-            self.scheduled_for = time.time()
-        else:
-            self.scheduled_for = scheduled_for
+        self.scheduled_for = scheduled_for or time.time()
 
     def __str__(self):
         return f"\"'{self.payload}', scheduled for {format_timestamp(self.scheduled_for)}\""
@@ -61,10 +59,11 @@ class Emulator:
                     else:
                         log.info(
                             f"Task was not ready at time {format_timestamp(now)}; "
-                            f"scheduld for  {format_timestamp(peek.scheduled_for)}")
+                            f"scheduled for  {format_timestamp(peek.scheduled_for)}")
                 time.sleep(0.01)
 
     def create_task(self, tasks_on_queue, payload, scheduled_for: datetime, project, location):
+        project=project or "dummy-project"
         queue_path = f"projects/{project}/locations/{location}/queues/{tasks_on_queue}"
         with self.__lock:
             if queue_path not in self.__queues:
