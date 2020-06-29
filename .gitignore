@@ -1,8 +1,7 @@
 __pycache__/
 *.py[cod]
 .env
-venv/
-virtenv/
+venv*/
 .idea/
 *.iws
 .DS_Store
