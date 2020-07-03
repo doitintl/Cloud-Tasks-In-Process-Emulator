@@ -11,8 +11,8 @@ from cloud_tasks_emulator.emulator import Emulator
 
 
 class TestEmulator(unittest.TestCase):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, name="test"):
+        super().__init__(name)
         self.TASKS_PER_QUEUE = 4
         self.DELAY_EVEN_NUMBERED_TASKS = 3
         self.NUM_QUEUES = 4
@@ -35,8 +35,9 @@ class TestEmulator(unittest.TestCase):
         insertion_index = task["insertion_index"]
         diff_in_seconds = scheduled_for - now
 
-        print(f"""Handling task on queue {queue_path} with insertion #{insertion_index} from \
-{task_queue_name} scheduled for {format_timestamp(scheduled_for)} at \
+        print(f"""Handling task on queue {self.__queue_name_from_path(queue_path)} \
+with insertion #{insertion_index} from {task_queue_name} \
+scheduled for {format_timestamp(scheduled_for)} at \
 {format_timestamp(now)} ({round(-1000 * diff_in_seconds)} ms late); using {thread_name}""")
 
         self.__assertionsOnReceivedTasks(diff_in_seconds, format_timestamp, now, queue_name_from_thread, queue_path,
@@ -52,9 +53,12 @@ class TestEmulator(unittest.TestCase):
                            f"{format_timestamp(now)} by {diff_in_seconds} seconds")
         self.assertEqual(task_queue_name, queue_name_from_thread,
                          f"Wrong thread name {queue_name_from_thread} as compared to queue name passed in task payload {task_queue_name}")
-        queue_name_from_path = queue_path.split("/")[-1]
+        queue_name = self.__queue_name_from_path(queue_path)
         self.assertEqual(task_queue_name, queue_name_from_thread,
-                         f"Wrong queue name from path {queue_name_from_path} as compared to queue name passed in task payload {task_queue_name}")
+                         f"Wrong queue name from path {queue_name} as compared to queue name passed in task payload {task_queue_name}")
+
+    def __queue_name_from_path(self, queue_path):
+        return queue_path.split("/")[-1]
 
     def test_enqueue_dequeue(self):
         emulator = Emulator(self.handle_tasks)
@@ -92,6 +96,3 @@ class TestEmulator(unittest.TestCase):
                                      datetime.fromtimestamp(scheduled_for), project, location)
                 sleep(0.2)
         return max_scheduled_for
-
-
-TestEmulator().test_enqueue_dequeue()

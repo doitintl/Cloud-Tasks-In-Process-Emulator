@@ -10,7 +10,6 @@ app = Flask(__name__)
 QUEUE_NAME = "my-appengine-queue"
 LOCATION = "us-central1"
 
-global cloud_tasks_client
 cloud_tasks_client = None
 
 
@@ -23,22 +22,27 @@ def task_handler():
 
 
 @app.route("/")
-def send_task():
-    project_id = os.getenv('GAE_APPLICATION')
+def create_task():
+    project_id = os.getenv("GAE_APPLICATION") or ""
+    if project_id[0:2] == 's~':
+        project_id=project_id[2:]
+
     in_seconds = 3
     scheduled_for = datetime.datetime.now() + datetime.timedelta(seconds=in_seconds)
-    payload = f"This task was sent at {format_datetime(datetime.datetime.now())}, scheduled for {format_datetime(scheduled_for)}"
+    payload = f"This task was created at {format_datetime(datetime.datetime.now())}, " \
+              f"scheduled for {format_datetime(scheduled_for)}"
     global cloud_tasks_client
-    # In deployment, where the cloud_tasks_client is not injected for development, we will use
-    # the CloudTasksAccess to get the real Cloud Tasks API.
+    # In deployment, where the Emulator is not injected to cloud_tasks_client for development, we will use
+    # the CloudTasksAccessor to access the real Cloud Tasks API.
     cloud_tasks_client = cloud_tasks_client or CloudTasksAccessor()
     cloud_tasks_client.create_task(QUEUE_NAME, payload, scheduled_for, project_id, LOCATION)
     return f'Sent "{payload}"'
 
 
 def handle_task(payload: str, queue_path: str):
+    """Callback for Cloud Tasks. To simulate processing, uppercase the paylad, then print to standard output."""
     payload_upper = payload.upper()
-    msg = f'Handling task from queue {queue_path} with payload: "{payload_upper}" at {format_datetime(datetime.datetime.now())}'
+    msg = f'Handling task from queue {queue_path} with payload "{payload_upper}" at {format_datetime(datetime.datetime.now())}'
     print(msg)
     return msg
 
