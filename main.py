@@ -3,19 +3,22 @@ import os
 
 from flask import Flask, request
 
-from sample_app.tasks_access import CloudTasksAccessor
+from tasks_access.tasks_access import CloudTasksAccessor
 
 app = Flask(__name__)
 
-queue_name = "my-appengine-queue"
-location = "us-central1"
+QUEUE_NAME = "my-appengine-queue"
+LOCATION = "us-central1"
+
 global cloud_tasks_client
+cloud_tasks_client = None
 
 
 @app.route("/task_handler", methods=["POST"])
 def task_handler():
     payload = request.get_data(as_text=True) or "<NO PAYLOAD>"
-    msg = handle_task(payload)
+    queue_name = request.headers.get("X-AppEngine-QueueName")
+    msg = handle_task(payload, queue_name)
     return msg
 
 
@@ -28,14 +31,14 @@ def send_task():
     global cloud_tasks_client
     # In deployment, where the cloud_tasks_client is not injected for development, we will use
     # the CloudTasksAccess to get the real Cloud Tasks API.
-    cloud_tasks_client =cloud_tasks_client or CloudTasksAccessor()
-    cloud_tasks_client.create_task(queue_name, payload, scheduled_for, project_id, "us-central1")
+    cloud_tasks_client = cloud_tasks_client or CloudTasksAccessor()
+    cloud_tasks_client.create_task(QUEUE_NAME, payload, scheduled_for, project_id, LOCATION)
     return f'Sent "{payload}"'
 
 
-def handle_task(payload: str):
+def handle_task(payload: str, queue_path: str):
     payload_upper = payload.upper()
-    msg = f'Handling the payload: "{payload_upper}" at {format_datetime(datetime.datetime.now())}'
+    msg = f'Handling task from queue {queue_path} with payload: "{payload_upper}" at {format_datetime(datetime.datetime.now())}'
     print(msg)
     return msg
 
