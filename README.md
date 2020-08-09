@@ -4,7 +4,7 @@ Google [doesn't](https://cloud.google.com/tasks/docs/migrating#features_in_task_
 an emulator for the Cloud Tasks API,  as it does for Datastore or PubSub. This project answers that need.
 
 # Article
-See the article at the [DoiT](https://blog.doit-intl.com) (mid-July 2020) for full details.
+See the article at the [DoiT](https://blog.doit-intl.com/looking-for-an-emulator-for-cloud-tasks-45f0ae2c67b5?source=friends_link&sk=05f7c4f7c0c63c2043cd53690ced3df4) for full details.
 
 # Usage
 
