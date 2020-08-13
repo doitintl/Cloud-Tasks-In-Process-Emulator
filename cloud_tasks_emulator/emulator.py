@@ -1,6 +1,6 @@
+import datetime
 import threading
 import time
-from datetime import datetime
 from typing import Callable, List, Optional
 
 
@@ -42,16 +42,18 @@ class Emulator:
 
             time.sleep(0.01)
 
-    def create_task(self, queue_name, payload, scheduled_for: datetime, project, location):
+    def create_task(self, queue_name, payload, scheduled_for: datetime.datetime, project, location):
         """
         :param queue_name: If the queue does not yet exist in this emulator, it will be created.
         :param payload: A string that will be passed to the handler.
-        :param scheduled_for: When this should be delivered
+        :param scheduled_for: When this should be delivered. If None or 0, will schedule
+        for immediate delivery.
         :param project: If this is None or empty, "dummy-project" will be used.
         :param location: If this is None or empty, "dummy-location" will be used.
         """
         project = project or "dummy-project"
         location = location or "dummy-location"
+        scheduled_for = scheduled_for or datetime.datetime.now()
         queue_path = f"projects/{project}/locations/{location}/queues/{queue_name}"
         with self.__lock:
             if queue_path not in self.__queues:
