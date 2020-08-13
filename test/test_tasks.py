@@ -19,6 +19,11 @@ class TestEmulator(unittest.TestCase):
 
         self.received: dict[str, List[str]] = defaultdict(list)
 
+    def test_enqueue_dequeue(self):
+        emulator = Emulator(self.handle_tasks)
+        max_scheduled_for = self.__enqueue_test_tasks(emulator)
+        self.__wait_for_handling(emulator, max_scheduled_for)
+
     def handle_tasks(self, payload: str, queue_path: str):
 
         def format_timestamp(timestamp: float) -> str:
@@ -49,21 +54,19 @@ scheduled for {format_timestamp(scheduled_for)} at \
         max_late = 1.5
         self.assertGreater(diff_in_seconds, -max_late,
                            msg=
-                           f"task {task}\nfor {format_timestamp(scheduled_for)} is  more than {max_late} seconds late compared to  "
+                           f"task {task}\nfor {format_timestamp(scheduled_for)} is  more than "
+                           f"{max_late} seconds late compared to  "
                            f"{format_timestamp(now)} by {diff_in_seconds} seconds")
         self.assertEqual(task_queue_name, queue_name_from_thread,
-                         f"Wrong thread name {queue_name_from_thread} as compared to queue name passed in task payload {task_queue_name}")
+                         f"Wrong thread name {queue_name_from_thread} as compared to "
+                         f"queue name passed in task payload {task_queue_name}")
         queue_name = self.__queue_name_from_path(queue_path)
         self.assertEqual(task_queue_name, queue_name_from_thread,
-                         f"Wrong queue name from path {queue_name} as compared to queue name passed in task payload {task_queue_name}")
+                         f"Wrong queue name from path {queue_name} as compared to "
+                         f"queue name passed in task payload {task_queue_name}")
 
     def __queue_name_from_path(self, queue_path):
         return queue_path.split("/")[-1]
-
-    def test_enqueue_dequeue(self):
-        emulator = Emulator(self.handle_tasks)
-        max_scheduled_for = self.__enqueue_test_tasks(emulator)
-        self.__wait_for_handling(emulator, max_scheduled_for)
 
     def __wait_for_handling(self, emulator, max_scheduled_for):
         while emulator.total_enqueued_tasks() and time.time() < max_scheduled_for + 1:

@@ -1,7 +1,7 @@
 import threading
 import time
 from datetime import datetime
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 
 class Task:
@@ -9,6 +9,9 @@ class Task:
         self.payload = payload
         self.scheduled_for = scheduled_for or time.time()
         self.queue_path = queue_path
+
+
+count = 0
 
 
 class Emulator:
@@ -25,16 +28,19 @@ class Emulator:
 
     def __process_queue(self, queue_path):
         while True:
+            task: Optional[Task]
+            task = None
             with self.__lock:
                 queue = self.__queues[queue_path]
                 if queue:
                     peek = queue[0]
                     now: float = time.time()
                     if peek.scheduled_for <= now:
-                        task: Task = queue.pop(0)  # Pop the beginning; push to the end
-                        self.__task_handler(task.payload, task.queue_path)
+                        task = queue.pop(0)  # Pop the beginning; push to the end
+            if task:
+                self.__task_handler(task.payload, task.queue_path)
 
-                time.sleep(0.01)
+            time.sleep(0.01)
 
     def create_task(self, queue_name, payload, scheduled_for: datetime, project, location):
         """
