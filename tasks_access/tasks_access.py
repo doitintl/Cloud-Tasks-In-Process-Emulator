@@ -6,7 +6,7 @@ from google.protobuf import timestamp_pb2
 
 class CloudTasksAccessor:
     def create_task(self, queue_name, payload, scheduled_for: datetime, project, location):
-        assert project, 'Must provide project ID'
+        assert project, 'Must provide project ID (usually by the GAE_APPLICATION environment variable)'
         assert location, 'Must provide location'
         scheduled_for = scheduled_for or datetime.now()
         payload = payload or ''

@@ -57,6 +57,6 @@ def __format_datetime(dt):
 
 def __get_project_id():
     project_id = os.getenv('GAE_APPLICATION') or ''
-    if project_id[0:2] == 's~':
+    if project_id[1] == '~':
         project_id = project_id[2:]
     return project_id
