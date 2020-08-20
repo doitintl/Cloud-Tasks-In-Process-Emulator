@@ -1,7 +1,25 @@
+import atexit
 import datetime
+import logging
+import os
 import threading
 import time
 from typing import Callable, List, Optional
+
+import jsonpickle
+
+
+def __init_logger():
+    log = logging.getLogger(__name__)
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.WARNING)
+    fmt = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(fmt)
+    log.addHandler(handler)
+    return log
+
+
+log = __init_logger()
 
 
 class Task:
@@ -11,20 +29,43 @@ class Task:
         self.queue_path = queue_path
 
 
-count = 0
-
-
 class Emulator:
     """
   The queues in the Emulator are not FIFO. Rather, they are priority queues: Elements are popped in the
   order of the time they are scheduled for, and only after the scheduled time.
     """
 
+    __queue_state_hibernation_file = os.path.abspath('task-queue-state-json')
+
     def __init__(self, task_handler: Callable[[str, str], None]):
+        self.__queues: dict[str, List[Task]] = self.__load() or {}
+        tot = self.total_enqueued_tasks()
+        if tot:  # Walrus in Python 3.8!
+            log.info("Loaded %d tasks", tot)
         self.__queue_threads: dict[str, threading.Thread] = {}
-        self.__queues: dict[str, List[Task]] = {}
+        for queue_path in self.__queues:  # Launch threads for loaded queues if any
+            self.__launch_queue_thread(queue_path, queue_path.split('/')[:-1])
         self.__task_handler = task_handler
         self.__lock = threading.Lock()
+        atexit.register(self._save)
+
+    def __load(self):
+        try:
+            with open(self.__queue_state_hibernation_file, 'r') as f:
+                json_s = f.read()
+                loaded = jsonpickle.decode(json_s)
+                os.remove(self.__queue_state_hibernation_file)
+                return loaded
+        except FileNotFoundError:
+            log.info("No persisted queue state found")
+            return None
+
+    def _save(self):
+        if self.total_enqueued_tasks():
+            with open(self.__queue_state_hibernation_file, 'w') as f:
+                json_s = jsonpickle.encode(self.__queues)
+                f.write(json_s)
+                log.info("Persisted queue state to %s", self.__queue_state_hibernation_file)
 
     def __process_queue(self, queue_path):
         while True:
@@ -55,17 +96,21 @@ class Emulator:
         location = location or "dummy-location"
         scheduled_for = scheduled_for or datetime.datetime.now()
         queue_path = f"projects/{project}/locations/{location}/queues/{queue_name}"
+        # todo don't use path
         with self.__lock:
             if queue_path not in self.__queues:
                 self.__queues[queue_path] = []
-                new_thread = threading.Thread(target=self.__process_queue,
-                                              name=f"Thread-{queue_name}", args=[queue_path], daemon=True)
-                self.__queue_threads[queue_path] = new_thread
-                new_thread.start()
+                self.__launch_queue_thread(queue_path, queue_name)
             queue = self.__queues[queue_path]
             task = Task(payload, queue_path, scheduled_for.timestamp())
             queue.append(task)
             queue.sort(key=lambda t: t.scheduled_for)
+
+    def __launch_queue_thread(self, queue_path, queue_name):
+        new_thread = threading.Thread(target=self.__process_queue,
+                                      name=f"Thread-{queue_name}", args=[queue_path], daemon=True)
+        self.__queue_threads[queue_path] = new_thread
+        new_thread.start()
 
     def total_enqueued_tasks(self):
         return sum(len(q) for q in self.__queues.values())
