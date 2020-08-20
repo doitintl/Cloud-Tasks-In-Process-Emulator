@@ -25,7 +25,7 @@ class Emulator:
   order of the time they are scheduled for, and only after the scheduled time.
     """
 
-    __hibernation_file = os.path.abspath('task-queue-state.json')
+    __hibernation_file = os.path.abspath('hibernate-emulator-task-queue.json')
 
     def __init__(self, task_handler: Callable[[str, str], None], hibernation=True):
         """
@@ -38,12 +38,13 @@ class Emulator:
         self.__task_handler = task_handler
         self.__queues: Dict[str, List[Task]] = {}
         if hibernation:
-            atexit.register(self._save)
-            self.__queues = self.__load()
+            atexit.register(self._hibernate)
+            self.__queues = self.__load_from_hibernation()
 
         tot = self.total_enqueued_tasks()
         if tot:  # Walrus in Python 3.8!
             log.info('Loaded %d tasks in %s queues', tot, len(self.__queues))
+
         self.__queue_threads: dict[str, threading.Thread] = {}
 
         # Remove hibernation file whether we just loaded or are skipping hubernation.
@@ -51,7 +52,7 @@ class Emulator:
         for queue_name in self.__queues:  # Launch threads for loaded queues, if any.
             self.__launch_queue_thread(queue_name)
 
-    def __load(self):
+    def __load_from_hibernation(self):
         try:
             with open(self.__hibernation_file, 'r') as f:
                 json_s = f.read()
@@ -65,7 +66,7 @@ class Emulator:
         except FileNotFoundError:
             pass
 
-    def _save(self):
+    def _hibernate(self):
         if self.total_enqueued_tasks():
             with open(self.__hibernation_file, 'w') as f:
                 json_s = jsonpickle.encode(self.__queues)
@@ -82,7 +83,7 @@ class Emulator:
                     peek = queue[0]
                     now: float = time.time()
                     if peek.scheduled_for <= now:
-                        task = queue.pop(0)  # Pop the beginning; push to the end
+                        task = queue.pop(0)  # Pop from the beginning; push to the end
             if task:
                 self.__task_handler(task.payload, task.queue_name)
 
