@@ -4,29 +4,20 @@ import logging
 import os
 import threading
 import time
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Dict
 
 import jsonpickle
 
-
-def __init_logger():
-    log = logging.getLogger(__name__)
-    handler = logging.StreamHandler()
-    handler.setLevel(logging.WARNING)
-    fmt = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(fmt)
-    log.addHandler(handler)
-    return log
-
-
-log = __init_logger()
-
+handler = logging.StreamHandler()
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+log.addHandler(handler)
 
 class Task:
-    def __init__(self, payload, queue_path, scheduled_for: float = None):
+    def __init__(self, payload, queue_name, scheduled_for: float = None):
         self.payload = payload
         self.scheduled_for = scheduled_for or time.time()
-        self.queue_path = queue_path
+        self.queue_name = queue_name
 
 
 class Emulator:
@@ -35,37 +26,45 @@ class Emulator:
   order of the time they are scheduled for, and only after the scheduled time.
     """
 
-    __queue_state_hibernation_file = os.path.abspath('task-queue-state-json')
+    __hibernation_file = os.path.abspath('task-queue-state.json')
 
-    def __init__(self, task_handler: Callable[[str, str], None]):
-        self.__queues: dict[str, List[Task]] = self.__load() or {}
+    def __init__(self, task_handler: Callable[[str, str], None], hibernation=True):
+        assert task_handler, 'Need a task handler function'
+        self.__lock = threading.Lock()
+        self.__task_handler = task_handler
+        self.__queues: Dict[str, List[Task]] = {}
+        if hibernation:
+            atexit.register(self._save)
+            self.__queues = self.__load()
+        # Remove hibernation file whether we just loaded or are skipping hubernation.
+
         tot = self.total_enqueued_tasks()
         if tot:  # Walrus in Python 3.8!
-            log.info("Loaded %d tasks", tot)
+            log.info('Loaded %d tasks in %s queues', tot, len(self.__queues))
         self.__queue_threads: dict[str, threading.Thread] = {}
-        for queue_path in self.__queues:  # Launch threads for loaded queues if any
-            self.__launch_queue_thread(queue_path, queue_path.split('/')[:-1])
-        self.__task_handler = task_handler
-        self.__lock = threading.Lock()
-        atexit.register(self._save)
-
+        self.__remove_hibernation_file()
+        for queue_name in self.__queues:  # For loaded queues, if any
+            self.__launch_queue_thread(queue_name)
     def __load(self):
         try:
-            with open(self.__queue_state_hibernation_file, 'r') as f:
+            with open(self.__hibernation_file, 'r') as f:
                 json_s = f.read()
-                loaded = jsonpickle.decode(json_s)
-                os.remove(self.__queue_state_hibernation_file)
-                return loaded
+                return jsonpickle.decode(json_s)
         except FileNotFoundError:
-            log.info("No persisted queue state found")
-            return None
+            return {}
+
+    def __remove_hibernation_file(self):
+        try:
+            os.remove(self.__hibernation_file)
+        except FileNotFoundError:
+            pass
 
     def _save(self):
         if self.total_enqueued_tasks():
-            with open(self.__queue_state_hibernation_file, 'w') as f:
+            with open(self.__hibernation_file, 'w') as f:
                 json_s = jsonpickle.encode(self.__queues)
                 f.write(json_s)
-                log.info("Persisted queue state to %s", self.__queue_state_hibernation_file)
+                log.info('Persisted queue state to %s', self.__hibernation_file)
 
     def __process_queue(self, queue_path):
         while True:
@@ -79,7 +78,7 @@ class Emulator:
                     if peek.scheduled_for <= now:
                         task = queue.pop(0)  # Pop the beginning; push to the end
             if task:
-                self.__task_handler(task.payload, task.queue_path)
+                self.__task_handler(task.payload, task.queue_name)
 
             time.sleep(0.01)
 
@@ -89,27 +88,23 @@ class Emulator:
         :param payload: A string that will be passed to the handler.
         :param scheduled_for: When this should be delivered. If None or 0, will schedule
         for immediate delivery.
-        :param project: If this is None or empty, "dummy-project" will be used.
-        :param location: If this is None or empty, "dummy-location" will be used.
+        :param project: Not used in emulator, but used in the real implementation (See tasks_access.py.)
+        :param location: Not used in emulator, but used in the real implementation (See tasks_access.py.)
         """
-        project = project or "dummy-project"
-        location = location or "dummy-location"
         scheduled_for = scheduled_for or datetime.datetime.now()
-        queue_path = f"projects/{project}/locations/{location}/queues/{queue_name}"
-        # todo don't use path
         with self.__lock:
-            if queue_path not in self.__queues:
-                self.__queues[queue_path] = []
-                self.__launch_queue_thread(queue_path, queue_name)
-            queue = self.__queues[queue_path]
-            task = Task(payload, queue_path, scheduled_for.timestamp())
+            if queue_name not in self.__queues:
+                self.__queues[queue_name] = []
+                self.__launch_queue_thread(queue_name)
+            queue = self.__queues[queue_name]
+            task = Task(payload, queue_name, scheduled_for.timestamp())
             queue.append(task)
             queue.sort(key=lambda t: t.scheduled_for)
 
-    def __launch_queue_thread(self, queue_path, queue_name):
+    def __launch_queue_thread(self, queue_name):
         new_thread = threading.Thread(target=self.__process_queue,
-                                      name=f"Thread-{queue_name}", args=[queue_path], daemon=True)
-        self.__queue_threads[queue_path] = new_thread
+                                      name=f"Thread-{queue_name}", args=[queue_name], daemon=True)
+        self.__queue_threads[queue_name] = new_thread
         new_thread.start()
 
     def total_enqueued_tasks(self):
