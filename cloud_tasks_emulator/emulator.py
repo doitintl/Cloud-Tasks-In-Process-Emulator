@@ -8,10 +8,9 @@ from typing import Callable, List, Optional, Dict
 
 import jsonpickle
 
-handler = logging.StreamHandler()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
-log.addHandler(handler)
+log.addHandler(logging.StreamHandler())
 
 class Task:
     def __init__(self, payload, queue_name, scheduled_for: float = None):
@@ -29,6 +28,11 @@ class Emulator:
     __hibernation_file = os.path.abspath('task-queue-state.json')
 
     def __init__(self, task_handler: Callable[[str, str], None], hibernation=True):
+        """
+        :param task_handler: A callback function: It will receive the tasks
+        :param hibernation: If True, queue state will be persisted at shutdown and reloaded at startup.
+        If False, neither will be done.
+        """
         assert task_handler, 'Need a task handler function'
         self.__lock = threading.Lock()
         self.__task_handler = task_handler
@@ -36,15 +40,17 @@ class Emulator:
         if hibernation:
             atexit.register(self._save)
             self.__queues = self.__load()
-        # Remove hibernation file whether we just loaded or are skipping hubernation.
 
         tot = self.total_enqueued_tasks()
         if tot:  # Walrus in Python 3.8!
             log.info('Loaded %d tasks in %s queues', tot, len(self.__queues))
         self.__queue_threads: dict[str, threading.Thread] = {}
+
+        # Remove hibernation file whether we just loaded or are skipping hubernation.
         self.__remove_hibernation_file()
-        for queue_name in self.__queues:  # For loaded queues, if any
+        for queue_name in self.__queues:  # Launch threads for loaded queues, if any.
             self.__launch_queue_thread(queue_name)
+
     def __load(self):
         try:
             with open(self.__hibernation_file, 'r') as f:

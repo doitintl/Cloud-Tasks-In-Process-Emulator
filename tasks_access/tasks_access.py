@@ -1,12 +1,16 @@
+import logging
 from datetime import datetime
 
 from google.cloud import tasks_v2
 from google.protobuf import timestamp_pb2
 
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+log.addHandler(logging.StreamHandler())
 
 class CloudTasksAccessor:
     def create_task(self, queue_name, payload, scheduled_for: datetime, project, location):
-        assert project, 'Must provide project ID (usually by the GAE_APPLICATION environment variable)'
+        assert project, 'Must provide project ID (usually read from the GAE_APPLICATION environment variable)'
         assert location, 'Must provide location'
         scheduled_for = scheduled_for or datetime.now()
         payload = payload or ''
