@@ -46,7 +46,7 @@ in the console) and a task will be created (see `main.py`).
     - Deduplication and deletion of tasks.
   - These features could be added, but:
     -  A simpler codebase is better for debugging. The whole
-     emulator is  under 100 lines and easy to understand. 
+     emulator is  under 120 lines and easy to understand. 
      For fuller functionality and more realistic testing, I would use the real Cloud Tasks, 
      in a deployed system.
   - If you would like improvements, please submit Pull Requests or Issues.
