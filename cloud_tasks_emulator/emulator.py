@@ -1,5 +1,6 @@
 import atexit
 import datetime
+import json
 import logging
 import os
 import threading
@@ -11,6 +12,7 @@ import jsonpickle
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 log.addHandler(logging.StreamHandler())
+
 
 class Task:
     def __init__(self, payload, queue_name, scheduled_for: float = None):
@@ -69,7 +71,7 @@ class Emulator:
     def _hibernate(self):
         if self.total_enqueued_tasks():
             with open(self.__hibernation_file, 'w') as f:
-                json_s = jsonpickle.encode(self.__queues)
+                json_s = jsonpickle.encode(self.__queues, indent=2)
                 f.write(json_s)
                 log.info('Persisted queue state to %s', self.__hibernation_file)
 
