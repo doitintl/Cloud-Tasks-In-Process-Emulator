@@ -4,9 +4,8 @@ from datetime import datetime
 from google.cloud import tasks_v2
 from google.protobuf import timestamp_pb2
 
+
 log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
-log.addHandler(logging.StreamHandler())
 
 class CloudTasksAccessor:
     def create_task(self, queue_name, payload, scheduled_for: datetime, project, location):
@@ -30,5 +29,5 @@ class CloudTasksAccessor:
         }
 
         response = client.create_task(queue_path, task)
-        print(f'Created "task {response.name}" at {queue_path}')
+        log.info(f'Created "task {response.name}" at {queue_path}')
         return response

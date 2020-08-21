@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 import unittest
 from collections import defaultdict
@@ -8,6 +9,7 @@ from time import sleep
 from typing import List
 
 from cloud_tasks_emulator.emulator import Emulator
+log = logging.getLogger(__name__)
 
 class TestEmulator(unittest.TestCase):
     def __init__(self, name='test'):
@@ -39,7 +41,7 @@ class TestEmulator(unittest.TestCase):
         insertion_index = payload_contents['insertion_index']
         diff_in_seconds = scheduled_for - now
 
-        print(f'Handling task on queue {q_name_from_handler} '
+        log.info(f'Handling task on queue {q_name_from_handler} '
               f'with insertion #{insertion_index} from {q_name_from_payload} '
               f'scheduled for {format_timestamp(scheduled_for)} at '
               f'{format_timestamp(now)} ({round(-1000 * diff_in_seconds)} ms late); using {thread_name}')
